@@ -1,0 +1,15 @@
+[Unit]
+Description=Listen for hotword
+
+[Service]
+Environment=PATH=/home/pi/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/bin/bash -c 'python -u /home/pi/snowboy/demo.py /home/pi/snowboy/yogi.pmdl'
+
+WorkingDirectory=/home/pi/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
