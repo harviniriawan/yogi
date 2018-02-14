@@ -9,7 +9,7 @@ class ThreadedDetector(threading.Thread):
     and provide methods to pause, resume, and modify detection
     """
 
-    def __init__(self, models, **kwargs):
+    def __init__(self, onDetect, models, **kwargs):
         """
         Initialize Detectors object. **kwargs is for any __init__ keyword
         arguments to be passed into HotWordDetector __init__() method.
@@ -46,7 +46,7 @@ class ThreadedDetector(threading.Thread):
                         self.initialize_detectors()
                         self.vars_are_changed = False
                     # Start detectors - blocks until interrupted by self.interrupted variable
-                    self.detectors.start(interrupt_check=lambda: self.interrupted, **self.run_kwargs)
+                    self.detectors.start(detected_callback=onDetect, interrupt_check=lambda: self.interrupted, **self.run_kwargs)
                 elif command == "Terminate":
                     # Program ending - terminate thread
                     break

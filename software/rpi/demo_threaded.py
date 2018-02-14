@@ -7,6 +7,8 @@ stop_program = False
 
 # This a demo that shows running Snowboy in another thread
 
+def onDetect():
+    print("HI")
 
 def signal_handler(signal, frame):
     global stop_program
@@ -24,7 +26,7 @@ model = sys.argv[1]
 signal.signal(signal.SIGINT, signal_handler)
 
 # Initialize ThreadedDetector object and start the detection thread
-threaded_detector = snowboythreaded.ThreadedDetector(model, sensitivity=0.5)
+threaded_detector = snowboythreaded.ThreadedDetector(onDetect, model, sensitivity=0.5)
 threaded_detector.start()
 
 print('Listening... Press Ctrl+C to exit')

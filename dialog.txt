@@ -1,0 +1,72 @@
+*use yogi as trigger instead*
+*adapt button code for GPIO instead*
+
+Medication:
+*requires auto triggering of assistant at specific times*
+- use GPIO for periodic turning on
+- when GPIO high, trigger conversation start
+- simultaneously, play a recording of "It's time for your medicine"
+- wave hands
+- when trigger timeout, go into sad mode
+
+Yogi: It's time for medicine!!~~
+*waves back and forth*
+
+-sad scenario-
+User: I DON'T WANNA or *ignores*
+*after a minute*
+Yogi: *sad face and look down*
+User: FINE
+
+-happy scenario-
+User: OK! I've done it!
+
+Yogi: *dances*
+(use camera somewhere here?)
+
+
+Face tracker:
+User: "Yogi..."
+*neopixel lights up in a ring*
+*facetracker turns on*
+*sends position and gives info for head servos*
+
+
+Diagnosis:
+User: Yogi, I'm not feeling too well / I injured myself, etc.
+Yogi: Can you describe what is wrong?
+User lists symptoms
+*record symptoms*
+Yogi: Could you place your finger here to allow me to test your vitals?
+*neopixel ring lights up in blue*
+*neopixel ring lights run in a circle while reading*
+*neopixel ring turns green*
+Yogi: Your vitals are currently.... Diagnosis:
+Yogi: Treatment would be:
+
+Status:
+- blynk
+- vitals
+- diagnosis
+
+
+Manual motion:
+*User presses GPIO button*
+*Manual override takes over*
+- BLE & blynk
+
+
+
+Other stuffs:
+- Arduino code for otto and joy
+    - Otto
+        - Compile
+        - Execute commands
+        - Adapt
+    - Joy
+        - [X] Compile
+        - Execute commands
+        - Adapt
+- Hardware
+    - Neopixel
+    - 3D design

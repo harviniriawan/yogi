@@ -27,6 +27,9 @@ It is available for Raspberry Pi 2/3 only; Pi Zero is not supported.
 import logging
 import sys
 import threading
+import snowboythreaded
+import signal
+import time
 
 import aiy.assistant.auth_helpers
 import aiy.voicehat
@@ -38,6 +41,16 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
+stop_program = False
+model = "yogi"
+
+def signal_handler(signal, frame):
+    global stop_program
+    stop_program = True
+
+signal.signal(signal.SIGINT, signal_handler)
+
+threaded_detector = snowboythreaded.ThreadedDetector(onDetect, model, sensitivity=0.5)
 
 class MyAssistant(object):
     """An assistant that runs in the background.
@@ -73,9 +86,10 @@ class MyAssistant(object):
             status_ui.status('ready')
             self._can_start_conversation = True
             # Start the voicehat button trigger.
-            aiy.voicehat.get_button().on_press(self._on_button_pressed)
+            # aiy.voicehat.get_button().on_press(self._on_button_pressed)
+            threaded_detector.start()
             if sys.stdout.isatty():
-                print('Say "OK, Google" or press the button, then speak. '
+                print('Say "OK, Google" or "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
 
         elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
@@ -92,7 +106,7 @@ class MyAssistant(object):
         elif event.type == EventType.ON_ASSISTANT_ERROR and event.args and event.args['is_fatal']:
             sys.exit(1)
 
-    def _on_button_pressed(self):
+    def onDetect(self):
         # Check if we can start a conversation. 'self._can_start_conversation'
         # is False when either:
         # 1. The assistant library is not yet ready; OR
