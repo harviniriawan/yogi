@@ -50,8 +50,6 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-threaded_detector = 
-
 class MyAssistant(object):
     """An assistant that runs in the background.
 
