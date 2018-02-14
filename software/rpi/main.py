@@ -50,7 +50,7 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-threaded_detector = snowboythreaded.ThreadedDetector(onDetect, model, sensitivity=0.5)
+threaded_detector = 
 
 class MyAssistant(object):
     """An assistant that runs in the background.
@@ -87,7 +87,7 @@ class MyAssistant(object):
             self._can_start_conversation = True
             # Start the voicehat button trigger.
             # aiy.voicehat.get_button().on_press(self._on_button_pressed)
-            threaded_detector.start()
+            snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5).start()
             if sys.stdout.isatty():
                 print('Say "OK, Google" or "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
@@ -106,7 +106,7 @@ class MyAssistant(object):
         elif event.type == EventType.ON_ASSISTANT_ERROR and event.args and event.args['is_fatal']:
             sys.exit(1)
 
-    def onDetect(self):
+    def _on_detect(self):
         # Check if we can start a conversation. 'self._can_start_conversation'
         # is False when either:
         # 1. The assistant library is not yet ready; OR
