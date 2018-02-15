@@ -17,6 +17,7 @@ class ThreadedDetector(threading.Thread):
         threading.Thread.__init__(self)
         self.models = models
         self.init_kwargs = kwargs
+        self.onDetect = onDetect
         self.interrupted = True
         self.commands = Queue.Queue()
         self.vars_are_changed = True
@@ -46,7 +47,7 @@ class ThreadedDetector(threading.Thread):
                         self.initialize_detectors()
                         self.vars_are_changed = False
                     # Start detectors - blocks until interrupted by self.interrupted variable
-                    self.detectors.start(detected_callback=onDetect, interrupt_check=lambda: self.interrupted, **self.run_kwargs)
+                    self.detectors.start(detected_callback=self.onDetect, interrupt_check=lambda: self.interrupted, **self.run_kwargs)
                 elif command == "Terminate":
                     # Program ending - terminate thread
                     break

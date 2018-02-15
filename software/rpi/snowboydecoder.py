@@ -104,7 +104,24 @@ class HotwordDetector(object):
         self.ring_buffer = RingBuffer(
             self.detector.NumChannels() * self.detector.SampleRate() * 5)
 
-    def start(self, detected_callback=calling,
+        self._running = True
+
+        def audio_callback(in_data, frame_count, time_info, status):
+            self.ring_buffer.extend(in_data)
+            play_data = chr(0) * len(in_data)
+            return play_data, pyaudio.paContinue
+
+        self.audio = pyaudio.PyAudio()
+        self.stream_in = self.audio.open(
+            input=True, output=False,
+            format=self.audio.get_format_from_width(
+                self.detector.BitsPerSample() / 8),
+            channels=self.detector.NumChannels(),
+            rate=self.detector.SampleRate(),
+            frames_per_buffer=2048,
+            stream_callback=audio_callback)
+
+    def start(self, detected_callback=play_audio_file,
               interrupt_check=lambda: False,
               sleep_time=0.03,
               audio_recorder_callback=None,
@@ -136,22 +153,6 @@ class HotwordDetector(object):
         :param recording_timeout: limits the maximum length of a recording.
         :return: None
         """
-        self._running = True
-
-        def audio_callback(in_data, frame_count, time_info, status):
-            self.ring_buffer.extend(in_data)
-            play_data = chr(0) * len(in_data)
-            return play_data, pyaudio.paContinue
-
-        self.audio = pyaudio.PyAudio()
-        self.stream_in = self.audio.open(
-            input=True, output=False,
-            format=self.audio.get_format_from_width(
-                self.detector.BitsPerSample() / 8),
-            channels=self.detector.NumChannels(),
-            rate=self.detector.SampleRate(),
-            frames_per_buffer=2048,
-            stream_callback=audio_callback)
 
         if interrupt_check():
             logger.debug("detect voice return")
