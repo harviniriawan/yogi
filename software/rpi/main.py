@@ -42,7 +42,7 @@ logging.basicConfig(
 )
 
 stop_program = False
-model = "yogi"
+model = "yogi.pmdl"
 
 def signal_handler(signal, frame):
     global stop_program
