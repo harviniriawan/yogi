@@ -48,9 +48,7 @@ def signal_handler(signal, frame):
     global stop_program
     stop_program = True
 
-signal.signal(signal.SIGINT, signal_handler)
-
-class MyAssistant(object):
+class assistant_thread(object):
     """An assistant that runs in the background.
 
     The Google Assistant Library event loop blocks the running thread entirely.
@@ -85,7 +83,7 @@ class MyAssistant(object):
             self._can_start_conversation = True
             # Start the voicehat button trigger.
             # aiy.voicehat.get_button().on_press(self._on_button_pressed)
-            snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5).start()
+            snowboythreaded.ThreadedDetector(_on_detect, model, sensitivity=0.5).start()
             if sys.stdout.isatty():
                 print('Say "OK, Google" or "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
@@ -112,9 +110,10 @@ class MyAssistant(object):
         if self._can_start_conversation:
             self._assistant.start_conversation()
 
-
 def main():
-    MyAssistant().start()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    assistant_thread().start()
 
 
 if __name__ == '__main__':
