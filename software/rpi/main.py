@@ -83,7 +83,9 @@ class assistant_thread(object):
             self._can_start_conversation = True
             # Start the voicehat button trigger.
             # aiy.voicehat.get_button().on_press(self._on_button_pressed)
-            snowboythreaded.ThreadedDetector(_on_detect, model, sensitivity=0.5).start()
+            snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
+            snowboy.start()
+            snowboy.start_recog(sleep_time=0.03)
             if sys.stdout.isatty():
                 print('Say "OK, Google" or "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
