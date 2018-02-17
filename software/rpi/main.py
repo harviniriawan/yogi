@@ -49,23 +49,23 @@ def signal_handler(signal, frame):
     """ Ctrl+C handler to cleanup """
     for t in threading.enumerate():
       # print(t.name)
-      if t.name != 'MainThread':
-        t.shutdown_flag.set()
+        if t.name != 'MainThread':
+            t.shutdown_flag.set()
 
     print('Goodbye!')
     sys.exit(1)
 
 def check_time(assistant_thread):
 
-  while True:
-    time = datetime.datetime.now().strftime("%H:%M")
-    if time in assistant_thread._medicine_time:
-      # assistant_thread.msg_queue.put(wave-hands)
-      # play "medicine time!" sound track
-      assistant_thread._on_detect()
+    while True:
+        time = datetime.datetime.now().strftime("%H:%M")
+        if time in assistant_thread._medicine_time:
+        # assistant_thread.msg_queue.put(wave-hands)
+        # play "medicine time!" sound track
+            assistant_thread._on_detect()
 
-    # sleep
-    time.sleep(30)
+        # sleep
+        time.sleep(30)
 
 class AssistantThread(object):
     """An assistant that runs in the background.
@@ -83,7 +83,6 @@ class AssistantThread(object):
         self._snowboy = None
         self.msg_queue = msg_queue
         self._medicine_time = ["10:00", "14:00", "20:00"]
-        self._medicine_flag = Event()
         self.shutdown_flag = Event()
 
     def start(self):
@@ -152,26 +151,26 @@ class AssistantThread(object):
 
 class SubscriptionThread(Thread):
 
-  def __init__(self, msg_queue):
+    def __init__(self, msg_queue):
 
-    Thread.__init__(self)
+        Thread.__init__(self)
 
-    self.shutdown_flag = Event()
-    self.msg_queue = msg_queue;
+        self.shutdown_flag = Event()
+        self.msg_queue = msg_queue;
 
-    # Create a new pull subscription on the given topic
-    pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
-    topic_name = 'YogiMessages'
-    topic = pubsub_client.topic(topic_name)
+        # Create a new pull subscription on the given topic
+        pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
+        topic_name = 'YogiMessages'
+        topic = pubsub_client.topic(topic_name)
 
-    subscription_name = 'PythonYogiSub'
-    self.subscription = topic.subscription(subscription_name)
-    try:
-      self.subscription.create()
-      logging.info('Subscription created')
-    except Exception as e:
-      print(e)
-      logging.info('Subscription already exists')
+        subscription_name = 'PythonYogiSub'
+        self.subscription = topic.subscription(subscription_name)
+        try:
+            self.subscription.create()
+        logging.info('Subscription created')
+        except Exception as e:
+            print(e)
+            logging.info('Subscription already exists')
 
   def run(self):
     """ Poll for new messages from the pull subscription """
@@ -179,25 +178,25 @@ class SubscriptionThread(Thread):
     while True:
 
       # pull messages
-      results = self.subscription.pull(return_immediately=True)
+        results = self.subscription.pull(return_immediately=True)
 
-      for ack_id, message in results:
+        for ack_id, message in results:
 
           # convert bytes to string and slice string
           # http://stackoverflow.com/questions/663171/is-there-a-way-to-substring-a-string-in-python
-          json_string = str(message.data)[3:-2]
-          json_string = json_string.replace('\\\\', '')
-          logging.info(json_string)
+            json_string = str(message.data)[3:-2]
+            json_string = json_string.replace('\\\\', '')
+            logging.info(json_string)
 
           # create dict from json string
-          try:
-              json_obj = json.loads(json_string)
-          except Exception as e:
-              logging.error('JSON Error: %s', e)
+            try:
+                json_obj = json.loads(json_string)
+            except Exception as e:
+                logging.error('JSON Error: %s', e)
 
           # get intent from json
-          intent = json_obj['intent']
-          print('pub/sub: ' + intent)
+            intent = json_obj['intent']
+            print('pub/sub: ' + intent)
 
           # perform action based on intent
           # if intent == 'prime_pump_start':
@@ -215,27 +214,25 @@ class SubscriptionThread(Thread):
           #   make_drink(json_obj['drink'], self.msg_queue)
 
       # ack received message
-      if results:
-        self.subscription.acknowledge([ack_id for ack_id, message in results])
-      time.sleep(0.25)
+        if results:
+            self.subscription.acknowledge([ack_id for ack_id, message in results])
+        time.sleep(0.25)
 
 
 class SerialThread(Thread):
 
-  def __init__(self, msg_queue):
-    Thread.__init__(self)
-    self.shutdown_flag = Event()
-    self.msg_queue = msg_queue
-    self.serial = serial.Serial(SER_DEVICE, 9600)
+    def __init__(self, msg_queue):
+        Thread.__init__(self)
+        self.shutdown_flag = Event()
+        self.msg_queue = msg_queue
+        self.serial = serial.Serial(SER_DEVICE, 9600)
 
-  def run(self):
-
-    while not self.shutdown_flag.is_set():
-
-      if not self.msg_queue.empty():
-        cmd = self.msg_queue.get()
-        self.serial.write(str.encode(cmd))
-        print('Serial sending ' + cmd)
+    def run(self):
+        while not self.shutdown_flag.is_set():
+            if not self.msg_queue.empty():
+                cmd = self.msg_queue.get()
+                self.serial.write(str.encode(cmd))
+                print('Serial sending ' + cmd)
 
 def main():
     msg_queue = Queue()
