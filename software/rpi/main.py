@@ -26,10 +26,12 @@ It is available for Raspberry Pi 2/3 only; Pi Zero is not supported.
 
 import logging
 import sys
-import threading
+from threading import Thread, Event
 import snowboythreaded
 import signal
+import datetime
 import time
+from queue import Queue
 
 import aiy.assistant.auth_helpers
 import aiy.voicehat
@@ -41,14 +43,31 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
-stop_program = False
 model = "yogi.pmdl"
 
 def signal_handler(signal, frame):
-    global stop_program
-    stop_program = True
+    """ Ctrl+C handler to cleanup """
+    for t in threading.enumerate():
+      # print(t.name)
+      if t.name != 'MainThread':
+        t.shutdown_flag.set()
 
-class assistant_thread(object):
+    print('Goodbye!')
+    sys.exit(1)
+
+def check_time(assistant_thread):
+
+  while True:
+    time = datetime.datetime.now().strftime("%H:%M")
+    if time in assistant_thread._medicine_time:
+      # assistant_thread.msg_queue.put(wave-hands)
+      # play "medicine time!" sound track
+      assistant_thread._on_detect()
+
+    # sleep
+    time.sleep(30)
+
+class AssistantThread(object):
     """An assistant that runs in the background.
 
     The Google Assistant Library event loop blocks the running thread entirely.
@@ -57,10 +76,15 @@ class assistant_thread(object):
     be invoked.
     """
 
-    def __init__(self):
-        self._task = threading.Thread(target=self._run_task)
+    def __init__(self, msg_queue):
+        self._task = Thread(target=self._run_task)
         self._can_start_conversation = False
         self._assistant = None
+        self._snowboy = None
+        self.msg_queue = msg_queue
+        self._medicine_time = ["10:00", "14:00", "20:00"]
+        self._medicine_flag = Event()
+        self.shutdown_flag = Event()
 
     def start(self):
         """Starts the assistant.
@@ -70,11 +94,13 @@ class assistant_thread(object):
         self._task.start()
 
     def _run_task(self):
-        credentials = aiy.assistant.auth_helpers.get_assistant_credentials()
-        with Assistant(credentials, "Meep") as assistant:
+        global creds
+        creds = aiy.assistant.auth_helpers.get_assistant_credentials()
+        with Assistant(creds, "Meep") as assistant:
             self._assistant = assistant
-            for event in assistant.start():
-                self._process_event(event)
+            while not self.shutdown_flag.is_set():
+                for event in assistant.start():
+                    self._process_event(event)
 
     def _process_event(self, event):
         status_ui = aiy.voicehat.get_status_ui()
@@ -83,22 +109,33 @@ class assistant_thread(object):
             self._can_start_conversation = True
             # Start the voicehat button trigger.
             # aiy.voicehat.get_button().on_press(self._on_button_pressed)
-            snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
-            snowboy.start()
-            snowboy.start_recog(sleep_time=0.03)
+            self._snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
+            self._snowboy.start()
+            self._snowboy.start_recog(sleep_time=0.03)
             if sys.stdout.isatty():
-                print('Say "OK, Google" or "Yogi", then speak. '
+                print('Say "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
+
 
         elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
             self._can_start_conversation = False
             status_ui.status('listening')
+            #msg_queue.put("xl!")
+
+        elif event.type = EventType.ON_RECOGNIZING_SPEECH_FINISHED:
+            print(ON_RECOGNIZING_SPEECH_FINISHED.text)
 
         elif event.type == EventType.ON_END_OF_UTTERANCE:
             status_ui.status('thinking')
+            #msg_queue.put("xt!")
+
+        elif event.type == EventType.ON_RESPONDING_STARTED:
+            #msg_queue.put("xr!")
+            #msg_queue.put(face_speak)
 
         elif event.type == EventType.ON_CONVERSATION_TURN_FINISHED:
             status_ui.status('ready')
+            #msg_queue.put("xo!")
             self._can_start_conversation = True
 
         elif event.type == EventType.ON_ASSISTANT_ERROR and event.args and event.args['is_fatal']:
@@ -110,13 +147,111 @@ class assistant_thread(object):
         # 1. The assistant library is not yet ready; OR
         # 2. The assistant library is already in a conversation.
         if self._can_start_conversation:
+            #msg_queue.put("xh!")
             self._assistant.start_conversation()
 
+class SubscriptionThread(Thread):
+
+  def __init__(self, msg_queue):
+
+    Thread.__init__(self)
+
+    self.shutdown_flag = Event()
+    self.msg_queue = msg_queue;
+
+    # Create a new pull subscription on the given topic
+    pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
+    topic_name = 'YogiMessages'
+    topic = pubsub_client.topic(topic_name)
+
+    subscription_name = 'PythonYogiSub'
+    self.subscription = topic.subscription(subscription_name)
+    try:
+      self.subscription.create()
+      logging.info('Subscription created')
+    except Exception as e:
+      print(e)
+      logging.info('Subscription already exists')
+
+  def run(self):
+    """ Poll for new messages from the pull subscription """
+
+    while True:
+
+      # pull messages
+      results = self.subscription.pull(return_immediately=True)
+
+      for ack_id, message in results:
+
+          # convert bytes to string and slice string
+          # http://stackoverflow.com/questions/663171/is-there-a-way-to-substring-a-string-in-python
+          json_string = str(message.data)[3:-2]
+          json_string = json_string.replace('\\\\', '')
+          logging.info(json_string)
+
+          # create dict from json string
+          try:
+              json_obj = json.loads(json_string)
+          except Exception as e:
+              logging.error('JSON Error: %s', e)
+
+          # get intent from json
+          intent = json_obj['intent']
+          print('pub/sub: ' + intent)
+
+          # perform action based on intent
+          # if intent == 'prime_pump_start':
+          #   PRIME_WHICH = json_obj['which_pump']
+          #   print('Start priming pump ' + PRIME_WHICH)
+          #   self.msg_queue.put('b' + PRIME_WHICH + 'r!') # turn on relay
+
+          # elif intent == 'prime_pump_end':
+          #   if PRIME_WHICH != None:
+          #     print('Stop priming pump ' + PRIME_WHICH)
+          #     self.msg_queue.put('b' + PRIME_WHICH + 'l!') # turn off relay
+          #     PRIME_WHICH = None
+
+          # elif intent == 'make_drink':
+          #   make_drink(json_obj['drink'], self.msg_queue)
+
+      # ack received message
+      if results:
+        self.subscription.acknowledge([ack_id for ack_id, message in results])
+      time.sleep(0.25)
+
+
+class SerialThread(Thread):
+
+  def __init__(self, msg_queue):
+    Thread.__init__(self)
+    self.shutdown_flag = Event()
+    self.msg_queue = msg_queue
+    self.serial = serial.Serial(SER_DEVICE, 9600)
+
+  def run(self):
+
+    while not self.shutdown_flag.is_set():
+
+      if not self.msg_queue.empty():
+        cmd = self.msg_queue.get()
+        self.serial.write(str.encode(cmd))
+        print('Serial sending ' + cmd)
+
 def main():
-
+    msg_queue = Queue()
     signal.signal(signal.SIGINT, signal_handler)
-    assistant_thread().start()
 
+    subscription_thread = SubscriptionThread(msg_queue)
+    subscription_thread.start()
+
+    serial_thread = SerialThread(msg_queue)
+    serial_thread.start()
+
+    assistant_thread = AssistantThread(msg_queue)
+    assistant_thread.start()
+
+    check_time_thread = Thread(target=check_time, args=([assistant_thread]))
+    check_time_thread.start()
 
 if __name__ == '__main__':
     main()

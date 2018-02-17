@@ -1,5 +1,5 @@
-*use yogi as trigger instead*
-*adapt button code for GPIO instead*
+[X] *use yogi as trigger instead*
+[X] *adapt button code for GPIO instead*
 
 Medication:
 *requires auto triggering of assistant at specific times*
