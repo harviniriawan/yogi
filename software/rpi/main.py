@@ -28,7 +28,7 @@ import logging
 import sys
 import json
 import subprocess
-import serial
+from serial import serial
 from threading import Thread, Event
 import threading
 import snowboythreaded
@@ -202,26 +202,26 @@ class SubscriptionThread(Thread):
         topic_name = 'projects/fiery-celerity-194216/topics/YogiMessages'
         sub_name = 'projects/fiery-celerity-194216/subscriptions/PythonYogiSub'
         self.subscription = subscriber.subscribe(sub_name)
+
+    def process_messages(message):
+      json_string = str(message.data)[3:-2]
+      json_string = json_string.replace('\\\\', '')
+      # create dict from json string
+      try:
+          json_obj = json.loads(json_string)
+      except Exception as e:
+          logging.error('JSON Error: %s', e)
+      command = json_obj['command']
+      print('pub/sub: ' + command)
+
+      if command == 'face':
+          value = json_obj['value']
+          self.msg_queue(face_command_map[value])
+
     def run(self):
         """ Poll for new messages from the pull subscription """
-        def process_messages(message):
-            json_string = str(message.data)[3:-2]
-            json_string = json_string.replace('\\\\', '')
-            # create dict from json string
-            try:
-                json_obj = json.loads(json_string)
-            except Exception as e:
-                logging.error('JSON Error: %s', e)
-            command = json_obj['command']
-            print('pub/sub: ' + command)
-
-            if command == 'face':
-                value = json_obj['value']
-                self.msg_queue(face_command_map[value])
-        while True:
-            # pull messages
-            self.subscription.open(process_messages)
-            time.sleep(0.25)
+        self.subscription.open(self.process_messages)
+        time.sleep(0.25)
 
 
 
