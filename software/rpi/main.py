@@ -49,7 +49,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
-SER_DEVICE = '/dev/ttyACM0'
+SER_DEVICE = '/dev/ttyUSB0'
 creds = aiy.assistant.auth_helpers.get_assistant_credentials()
 model = "/home/pi/yogi/software/rpi/yogi.pmdl"
 
