@@ -47,7 +47,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
-model = "yogi.pmdl"
+model = "/home/pi/yogi/software/rpi/yogi.pmdl"
 
 face_command_map = {
     'happy': 'fac 10',
@@ -66,19 +66,22 @@ face_command_map = {
     'speaking': 'fac 140',
 }
 
+
 def signal_handler(signal, frame):
     """ Ctrl+C handler to cleanup """
     for t in threading.enumerate():
-      # print(t.name)
+        # print(t.name)
         if t.name != 'MainThread':
             t.shutdown_flag.set()
 
     print('Goodbye!')
     sys.exit(1)
 
+
 def say_ip():
     ip_address = subprocess.check_output("hostname -I | cut -d' ' -f1", shell=True)
     aiy.audio.say('My IP address is %s' % ip_address.decode('utf-8'))
+
 
 def check_time(assistant_thread):
 
@@ -92,6 +95,7 @@ def check_time(assistant_thread):
             time.sleep(60)
         # sleep
         time.sleep(30)
+
 
 class AssistantThread(object):
     """An assistant that runs in the background.
@@ -142,7 +146,6 @@ class AssistantThread(object):
                 print('Say "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
 
-
         elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
             self._can_start_conversation = False
             status_ui.status('listening')
@@ -182,6 +185,7 @@ class AssistantThread(object):
             self.msg_queue.put("xh!")
             self._assistant.start_conversation()
 
+
 class SubscriptionThread(Thread):
 
     def __init__(self, msg_queue):
@@ -189,7 +193,7 @@ class SubscriptionThread(Thread):
         Thread.__init__(self)
 
         self.shutdown_flag = Event()
-        self.msg_queue = msg_queue;
+        self.msg_queue = msg_queue
 
         # Create a new pull subscription on the given topic
         pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
@@ -205,54 +209,36 @@ class SubscriptionThread(Thread):
             print(e)
             logging.info('Subscription already exists')
 
-  def run(self):
-    """ Poll for new messages from the pull subscription """
+    def run(self):
+        """ Poll for new messages from the pull subscription """
+        while True:
+            # pull messages
+            results = self.subscription.pull(return_immediately=True)
 
-    while True:
+            for ack_id, message in results:
 
-      # pull messages
-        results = self.subscription.pull(return_immediately=True)
+                # convert bytes to string and slice string
+                # http://stackoverflow.com/questions/663171/is-there-a-way-to-substring-a-string-in-python
+                json_string = str(message.data)[3:-2]
+                json_string = json_string.replace('\\\\', '')
+                logging.info(json_string)
 
-        for ack_id, message in results:
+                # create dict from json string
+                try:
+                    json_obj = json.loads(json_string)
+                except Exception as e:
+                    logging.error('JSON Error: %s', e)
 
-          # convert bytes to string and slice string
-          # http://stackoverflow.com/questions/663171/is-there-a-way-to-substring-a-string-in-python
-            json_string = str(message.data)[3:-2]
-            json_string = json_string.replace('\\\\', '')
-            logging.info(json_string)
+                command = json_obj['command']
+                print('pub/sub: ' + command)
 
-          # create dict from json string
-            try:
-                json_obj = json.loads(json_string)
-            except Exception as e:
-                logging.error('JSON Error: %s', e)
-
-          # get command from json
-            command = json_obj['command']
-            print('pub/sub: ' + command)
-
-          # perform action based on command
-          # if command == 'prime_pump_start':
-          #   PRIME_WHICH = json_obj['which_pump']
-          #   print('Start priming pump ' + PRIME_WHICH)
-          #   self.msg_queue.put('b' + PRIME_WHICH + 'r!') # turn on relay
-
-          # elif command == 'prime_pump_end':
-          #   if PRIME_WHICH != None:
-          #     print('Stop priming pump ' + PRIME_WHICH)
-          #     self.msg_queue.put('b' + PRIME_WHICH + 'l!') # turn off relay
-          #     PRIME_WHICH = None
-
-          # elif command == 'make_drink':
-          #   make_drink(json_obj['drink'], self.msg_queue)
-
-          if command == 'face':
-            value = json_obj['value']
-            self.msg_queue(face_command_map[value])
-      # ack received message
-        if results:
-            self.subscription.acknowledge([ack_id for ack_id, message in results])
-        time.sleep(0.25)
+            if command == 'face':
+                value = json_obj['value']
+                self.msg_queue(face_command_map[value])
+            # ack received message
+            if results:
+                self.subscription.acknowledge([ack_id for ack_id, message in results])
+            time.sleep(0.25)
 
 
 class SerialThread(Thread):
@@ -269,6 +255,7 @@ class SerialThread(Thread):
                 cmd = self.msg_queue.get()
                 self.serial.write(str.encode(cmd))
                 print('Serial sending ' + cmd)
+
 
 def main():
     msg_queue = Queue()
