@@ -151,7 +151,7 @@ class AssistantThread(object):
             status_ui.status('listening')
             self.msg_queue.put("xl!")
 
-        elif event.type = EventType.ON_RECOGNIZING_SPEECH_FINISHED:
+        elif event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED:
             print('You said: ', event.args['text'])
             if text == 'ip address':
                 assistant.stop_conversation()
@@ -204,7 +204,7 @@ class SubscriptionThread(Thread):
         self.subscription = topic.subscription(subscription_name)
         try:
             self.subscription.create()
-        logging.info('Subscription created')
+            logging.info('Subscription created')
         except Exception as e:
             print(e)
             logging.info('Subscription already exists')
