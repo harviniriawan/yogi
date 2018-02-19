@@ -27,6 +27,7 @@ It is available for Raspberry Pi 2/3 only; Pi Zero is not supported.
 import logging
 import sys
 import json
+import subprocess
 import serial
 from threading import Thread, Event
 import snowboythreaded
