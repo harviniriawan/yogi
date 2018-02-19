@@ -74,7 +74,7 @@ face_command_map = {
 def signal_handler(signal, frame):
     """ Ctrl+C handler to cleanup """
     for t in threading.enumerate():
-        # print(t.name)
+        print(t)
         if t.name != 'MainThread':
             t.shutdown_flag.set()
 
@@ -201,7 +201,6 @@ class SubscriptionThread(Thread):
         subscriber = pubsub.SubscriberClient(credentials=creds)
         topic_name = 'projects/fiery-celerity-194216/topics/YogiMessages'
         sub_name = 'projects/fiery-celerity-194216/subscriptions/PythonYogiSub'
-        subscriber.create_subscription(sub_name, topic_name)
         self.subscription = subscriber.subscribe(sub_name)
     def run(self):
         """ Poll for new messages from the pull subscription """

@@ -3,14 +3,14 @@
 const functions = require('firebase-functions'); // Cloud Functions for Firebase library
 const DialogflowApp = require('actions-on-google').DialogflowApp; // Google Assistant helper library
 const http = require('http');
-const PubSub = require('@google-cloud/pubsub');
+const pubsub = require('@google-cloud/pubsub');
 const host = 'api.worldweatheronline.com';
 const wwoApiKey = '6468907fa0c44d05aa6160331180902';
-const pubsubClient = new PubSub({ projectId: 'fiery-celerity-194216' });
-const topic = pubsubClient.topic('YogiMessages');
-const publisher = topic.publisher();
+var pubsubClient = pubsub({ projectId: 'fiery-celerity-194216' });
+const topicName = 'YogiMessages';
+const topic = pubsubClient.topic(topicName)
 
-exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+exports.webhook = functions.https.onRequest((request, response) => {
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
   console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
   if (request.body.result) {
@@ -65,11 +65,13 @@ function processV1Request (request, response) {
     },
     'resp_yes': () => {
         var pubData = { 'command': 'face', 'value': 'happy' };
-        publishMessage(JSON.stringify(pubData), sendGoogleResponse('Yay!'));
+        publishMessage(JSON.stringify(pubData));
+        sendGoogleResponse('Yay!');
     },
     'resp_no': () => {
         var pubData = { 'command': 'face', 'value': 'sad' };
-        publishMessage(JSON.stringify(pubData), sendGoogleResponse('Okay...'));
+        publishMessage(JSON.stringify(pubData));
+        sendGoogleResponse('Okay...');
     },
     'weather': () => {
         let hasWeatherContext = false;
@@ -184,7 +186,6 @@ function processV1Request (request, response) {
     if (typeof responseToUser === 'string') {
       app.ask(responseToUser); // Google Assistant response
       var pubData = { 'command': 'face', 'value': 'speaking' };
-      publishMessage(JSON.stringify(pubData), null);
     } else {
       // If speech or displayText is defined use it to respond
       let googleResponse = app.buildRichResponse().addSimpleResponse({
@@ -310,22 +311,21 @@ function processV1Request (request, response) {
   //     }
   //     callback(pubsubClient.topic(topicName));
   //   });
-  // }
 
-  function publishMessage(message, callback) {
-    const data = Buffer.from(message);
-    publisher.publish(data, function(error) {
-      if (error) {
-        console.log('Publish error:');
-        console.log(error);
-        return;
-      }
-      console.log('Publish successful');
-      if (callback) {
-        callback();
-      }
-    });
-  }
+}
+
+function publishMessage(message) {
+
+  topic.publish(message, function(error) {
+
+    if (error) {
+      console.log('Publish error:');
+      console.log(error);
+      return;
+    }
+
+    console.log('publish successful');
+  });
 }
 
 
