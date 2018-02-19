@@ -111,7 +111,7 @@ class AssistantThread(Thread):
     """
 
     def __init__(self, msg_queue):
-        self._task = Thread.__init__(self, target=self._run_task)
+        self._task = Thread(target=self._run_task)
         self._can_start_conversation = False
         self._assistant = None
         self._snowboy = None
