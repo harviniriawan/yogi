@@ -198,49 +198,31 @@ class SubscriptionThread(Thread):
         self.msg_queue = msg_queue
 
         # Create a new pull subscription on the given topic
-        pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
-        topic_name = 'YogiMessages'
-        topic = pubsub_client.topic(topic_name)
-
-        subscription_name = 'PythonYogiSub'
-        self.subscription = topic.subscription(subscription_name)
-        try:
-            self.subscription.create()
-            logging.info('Subscription created')
-        except Exception as e:
-            print(e)
-            logging.info('Subscription already exists')
-
+        topic_name = 'projects/fiery-celerity-194216/topics/YogiMessages'
+        sub_name = 'projects/fiery-celerity-194216/subscriptions/PythonYogiSub'
+        subscriber.create_subscription(sub_name, topic_name)
+        self.subscription = subscriber.subscribe(sub_name)
     def run(self):
         """ Poll for new messages from the pull subscription """
-        while True:
-            # pull messages
-            results = self.subscription.pull(return_immediately=True)
-
-            for ack_id, message in results:
-
-                # convert bytes to string and slice string
-                # http://stackoverflow.com/questions/663171/is-there-a-way-to-substring-a-string-in-python
-                json_string = str(message.data)[3:-2]
-                json_string = json_string.replace('\\\\', '')
-                logging.info(json_string)
-
-                # create dict from json string
-                try:
-                    json_obj = json.loads(json_string)
-                except Exception as e:
-                    logging.error('JSON Error: %s', e)
-
-                command = json_obj['command']
-                print('pub/sub: ' + command)
+        def process_messages(message):
+            json_string = str(message.data)[3:-2]
+            json_string = json_string.replace('\\\\', '')
+            # create dict from json string
+            try:
+                json_obj = json.loads(json_string)
+            except Exception as e:
+                logging.error('JSON Error: %s', e)
+            command = json_obj['command']
+            print('pub/sub: ' + command)
 
             if command == 'face':
                 value = json_obj['value']
                 self.msg_queue(face_command_map[value])
-            # ack received message
-            if results:
-                self.subscription.acknowledge([ack_id for ack_id, message in results])
+        while True:
+            # pull messages
+            self.subscription.open(process_messages)
             time.sleep(0.25)
+
 
 
 class SerialThread(Thread):
