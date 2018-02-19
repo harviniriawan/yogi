@@ -195,19 +195,19 @@ class SubscriptionThread(Thread):
         self.subscription = subscriber.subscribe(sub_name)
 
     def process_messages(self, message):
-      json_string = str(message.data)[3:-2]
-      json_string = json_string.replace('\\\\', '')
-      # create dict from json string
-      try:
-          json_obj = json.loads(json_string)
-      except Exception as e:
-          logging.error('JSON Error: %s', e)
-      command = json_obj['command']
-      print('pub/sub: ' + command)
+        json_string = str(message.data)[3:-2]
+        json_string = json_string.replace('\\\\', '')
+        # create dict from json string
+        try:
+            json_obj = json.loads(json_string)
+        except Exception as e:
+            logging.error('JSON Error: %s', e)
+        command = json_obj['command']
+        print('pub/sub: ' + command)
 
-      if command == 'face':
-          value = json_obj['value']
-          self.msg_queue(face_command_map[value])
+        if command == 'face':
+            value = json_obj['value']
+            self.msg_queue.put(face_command_map[value])
 
     def run(self):
         """ Poll for new messages from the pull subscription """
@@ -215,7 +215,7 @@ class SubscriptionThread(Thread):
         try:
           future.result()
         except Exception as ex:
-            subscription.close()
+            self.subscription.close()
             raise
 
 
