@@ -211,8 +211,9 @@ class SubscriptionThread(Thread):
 
     def run(self):
         """ Poll for new messages from the pull subscription """
-        future = self.subscription.open(self.process_messages)
-        future.result()
+        self.subscription.open(self.process_messages)
+        while not shutdown_flag.is_set():
+          time.sleep(0.25)
 
 
 class SerialThread(Thread):
