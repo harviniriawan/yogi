@@ -239,18 +239,18 @@ def main():
     msg_queue = Queue()
     signal.signal(signal.SIGINT, signal_handler)
 
-    #assistant_thread = AssistantThread(msg_queue)
-    #assistant_thread.start()
+    assistant_thread = AssistantThread(msg_queue)
+    assistant_thread.start()
 
     subscription_thread = SubscriptionThread(msg_queue)
     subscription_thread.start()
 
-    #serial_thread = SerialThread(msg_queue)
-    #serial_thread.start()
+    serial_thread = SerialThread(msg_queue)
+    serial_thread.start()
 
 
-    #check_time_thread = Thread(target=check_time, args=([assistant_thread]))
-    #check_time_thread.start()
+    check_time_thread = Thread(target=check_time, args=([assistant_thread]))
+    check_time_thread.start()
 
 if __name__ == '__main__':
     main()
