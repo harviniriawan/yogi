@@ -153,7 +153,7 @@ class AssistantThread(object):
 
         elif event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED:
             print('You said: ', event.args['text'])
-            if text == 'ip address':
+            if even.args['text'] == 'ip address':
                 assistant.stop_conversation()
                 say_ip()
 
