@@ -133,10 +133,10 @@ class AssistantThread(Thread):
             status_ui.status('ready')
             self._can_start_conversation = True
             # Start the voicehat button trigger.
-            aiy.voicehat.get_button().on_press(self._on_detect)
-            # self._snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
-            # self._snowboy.start()
-            # self._snowboy.start_recog(sleep_time=0.03)
+            # aiy.voicehat.get_button().on_press(self._on_detect)
+            self._snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
+            self._snowboy.start()
+            self._snowboy.start_recog(sleep_time=0.03)
             if sys.stdout.isatty():
                 print('Say "Yogi", then speak. '
                       'Press Ctrl+C to quit...')
@@ -227,7 +227,6 @@ class SerialThread(Thread):
 
     def run(self):
         while not self.shutdown_flag.is_set():
-            print("Serial running")
             if not self.msg_queue.empty():
                 cmd = self.msg_queue.get()
                 self.serial.write(str.encode(cmd))
