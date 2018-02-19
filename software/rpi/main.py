@@ -101,7 +101,7 @@ def check_time(assistant_thread):
         time.sleep(30)
 
 
-class AssistantThread(Thread):
+class AssistantThread(object):
     """An assistant that runs in the background.
 
     The Google Assistant Library event loop blocks the running thread entirely.
