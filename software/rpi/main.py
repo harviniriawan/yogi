@@ -212,7 +212,7 @@ class SubscriptionThread(Thread):
     def run(self):
         """ Poll for new messages from the pull subscription """
         self.subscription.open(self.process_messages)
-        while not shutdown_flag.is_set():
+        while not self.shutdown_flag.is_set():
           time.sleep(0.25)
 
 
