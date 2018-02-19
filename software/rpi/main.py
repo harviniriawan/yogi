@@ -90,8 +90,8 @@ def say_ip():
 def check_time(assistant_thread):
 
     while True:
-        time = datetime.datetime.now().strftime("%H:%M")
-        if time in assistant_thread._medicine_time:
+        timenow = datetime.datetime.now().strftime("%H:%M")
+        if timenow in assistant_thread._medicine_time:
             # assistant_thread.msg_queue.put(wave-hands)
             # play "medicine time!" sound track
             assistant_thread._on_detect()
