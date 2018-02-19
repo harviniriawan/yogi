@@ -5,6 +5,8 @@ const DialogflowApp = require('actions-on-google').DialogflowApp; // Google Assi
 const http = require('http');
 const host = 'api.worldweatheronline.com';
 const wwoApiKey = '6468907fa0c44d05aa6160331180902';
+const pubsubClient = pubsub({ projectId: 'fiery-celerity-194216' });
+const topicName = 'YogiMessages';
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -58,6 +60,20 @@ function processV1Request (request, response) {
         } else {
           sendResponse('Thank you!'); // Send simple response to user
         }
+    },
+    'resp_yes': () => {
+        createTopic(function(topic) {
+          var pubData = { 'command': 'face', 'value': 'happy' };
+          publishMessage(topic, JSON.stringify(pubData), sendGoogleResponse('Yay!')
+        );
+      });
+    },
+    'resp_no': () => {
+        createTopic(function(topic) {
+          var pubData = { 'command': 'face', 'value': 'sad' };
+          publishMessage(topic, JSON.stringify(pubData), sendGoogleResponse('Yay!')
+        );
+      });
     },
     'weather': () => {
         let hasWeatherContext = false;
@@ -171,6 +187,10 @@ function processV1Request (request, response) {
   function sendGoogleResponse (responseToUser) {
     if (typeof responseToUser === 'string') {
       app.ask(responseToUser); // Google Assistant response
+      createTopic(function(topic) {
+        var pubData = { 'command': 'face', 'value': 'speaking' };
+        publishMessage(topic, JSON.stringify(pubData), null);
+      });
     } else {
       // If speech or displayText is defined use it to respond
       let googleResponse = app.buildRichResponse().addSimpleResponse({
@@ -212,6 +232,7 @@ function processV1Request (request, response) {
     }
   }
 }
+
 function callWeatherApi (city, date) {
   return new Promise((resolve, reject) => {
     // Create the path for the HTTP request to get the weather
@@ -275,6 +296,41 @@ function callWeatherApiCondition (userCondition, city, date) {
         reject(error);
       });
     });
+  });
+}
+
+function createTopic(callback) {
+  if (!callback) {
+    console.log('no callback');
+    return;
+  }
+  pubsubClient.createTopic(topicName, function(error, topic) {
+    // topic already exists
+    if (error && error.code === 409) {
+      console.log('topic created');
+      // callback(topic);
+      callback(pubsubClient.topic(topicName));
+      return;
+    }
+    if (error) {
+      console.log(error);
+      return;
+    }
+    callback(pubsubClient.topic(topicName));
+  });
+}
+
+function publishMessage(topic, message, callback) {
+  topic.publish(message, function(error) {
+    if (error) {
+      console.log('Publish error:');
+      console.log(error);
+      return;
+    }
+    console.log('publish successful');
+    if (callback) {
+      callback();
+    }
   });
 }
 // Construct rich response for Google Assistant (v1 requests only)

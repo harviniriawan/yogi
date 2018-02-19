@@ -26,6 +26,8 @@ It is available for Raspberry Pi 2/3 only; Pi Zero is not supported.
 
 import logging
 import sys
+import json
+import serial
 from threading import Thread, Event
 import snowboythreaded
 import signal
@@ -35,8 +37,10 @@ from queue import Queue
 
 import aiy.assistant.auth_helpers
 import aiy.voicehat
+import aiy.audio
 from google.assistant.library import Assistant
 from google.assistant.library.event import EventType
+from google.cloud import pubsub
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +48,23 @@ logging.basicConfig(
 )
 
 model = "yogi.pmdl"
+
+face_command_map = {
+    'happy': 'fac 10',
+    'very happy': 'fac 20',
+    'sad': 'fac 30',
+    'very sad': 'fac 40',
+    'tongue': 'fac 50',
+    'dead': 'fac 60',
+    'scared': 'fac 70',
+    'sleeping': 'fac 80',
+    'confused': 'fac 90',
+    'bored': 'fac 100',
+    'love': 'fac 110',
+    'disgusted': 'fac 120',
+    'angry': 'fac 130',
+    'speaking': 'fac 140',
+}
 
 def signal_handler(signal, frame):
     """ Ctrl+C handler to cleanup """
@@ -55,15 +76,20 @@ def signal_handler(signal, frame):
     print('Goodbye!')
     sys.exit(1)
 
+def say_ip():
+    ip_address = subprocess.check_output("hostname -I | cut -d' ' -f1", shell=True)
+    aiy.audio.say('My IP address is %s' % ip_address.decode('utf-8'))
+
 def check_time(assistant_thread):
 
     while True:
         time = datetime.datetime.now().strftime("%H:%M")
         if time in assistant_thread._medicine_time:
-        # assistant_thread.msg_queue.put(wave-hands)
-        # play "medicine time!" sound track
+            # assistant_thread.msg_queue.put(wave-hands)
+            # play "medicine time!" sound track
             assistant_thread._on_detect()
-
+            assistant_thread.medicine_flag.set()
+            time.sleep(60)
         # sleep
         time.sleep(30)
 
@@ -84,6 +110,7 @@ class AssistantThread(object):
         self.msg_queue = msg_queue
         self._medicine_time = ["10:00", "14:00", "20:00"]
         self.shutdown_flag = Event()
+        self.medicine_flag = Event()
 
     def start(self):
         """Starts the assistant.
@@ -119,22 +146,28 @@ class AssistantThread(object):
         elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
             self._can_start_conversation = False
             status_ui.status('listening')
-            #msg_queue.put("xl!")
+            self.msg_queue.put("xl!")
 
         elif event.type = EventType.ON_RECOGNIZING_SPEECH_FINISHED:
-            print(ON_RECOGNIZING_SPEECH_FINISHED.text)
+            print('You said: ', event.args['text'])
+            if text == 'ip address':
+                assistant.stop_conversation()
+                say_ip()
 
         elif event.type == EventType.ON_END_OF_UTTERANCE:
             status_ui.status('thinking')
-            #msg_queue.put("xt!")
+            self.msg_queue.put("xt!")
 
         elif event.type == EventType.ON_RESPONDING_STARTED:
-            #msg_queue.put("xr!")
-            #msg_queue.put(face_speak)
+            self.msg_queue.put("xr!")
+            self.msg_queue.put("fac 140")
+
+        elif event.type == EventType.ON_RESPONDING_FINISHED:
+            self.msg_queue.put("restore")
 
         elif event.type == EventType.ON_CONVERSATION_TURN_FINISHED:
             status_ui.status('ready')
-            #msg_queue.put("xo!")
+            self.msg_queue.put("xo!")
             self._can_start_conversation = True
 
         elif event.type == EventType.ON_ASSISTANT_ERROR and event.args and event.args['is_fatal']:
@@ -146,7 +179,7 @@ class AssistantThread(object):
         # 1. The assistant library is not yet ready; OR
         # 2. The assistant library is already in a conversation.
         if self._can_start_conversation:
-            #msg_queue.put("xh!")
+            self.msg_queue.put("xh!")
             self._assistant.start_conversation()
 
 class SubscriptionThread(Thread):
@@ -194,25 +227,28 @@ class SubscriptionThread(Thread):
             except Exception as e:
                 logging.error('JSON Error: %s', e)
 
-          # get intent from json
-            intent = json_obj['intent']
-            print('pub/sub: ' + intent)
+          # get command from json
+            command = json_obj['command']
+            print('pub/sub: ' + command)
 
-          # perform action based on intent
-          # if intent == 'prime_pump_start':
+          # perform action based on command
+          # if command == 'prime_pump_start':
           #   PRIME_WHICH = json_obj['which_pump']
           #   print('Start priming pump ' + PRIME_WHICH)
           #   self.msg_queue.put('b' + PRIME_WHICH + 'r!') # turn on relay
 
-          # elif intent == 'prime_pump_end':
+          # elif command == 'prime_pump_end':
           #   if PRIME_WHICH != None:
           #     print('Stop priming pump ' + PRIME_WHICH)
           #     self.msg_queue.put('b' + PRIME_WHICH + 'l!') # turn off relay
           #     PRIME_WHICH = None
 
-          # elif intent == 'make_drink':
+          # elif command == 'make_drink':
           #   make_drink(json_obj['drink'], self.msg_queue)
 
+          if command == 'face':
+            value = json_obj['value']
+            self.msg_queue(face_command_map[value])
       # ack received message
         if results:
             self.subscription.acknowledge([ack_id for ack_id, message in results])

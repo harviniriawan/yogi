@@ -9,6 +9,7 @@ Medication:
 - wave hands
 - when trigger timeout, go into sad mode
 
+mic activates and speaker beeps
 Yogi: It's time for medicine!!~~
 *waves back and forth*
 
