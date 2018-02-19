@@ -28,7 +28,7 @@ import logging
 import sys
 import json
 import subprocess
-from serial import serial
+import serial
 from threading import Thread, Event
 import threading
 import snowboythreaded
@@ -49,7 +49,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
-
+SER_DEVICE = '/dev/ttyACM0'
 creds = aiy.assistant.auth_helpers.get_assistant_credentials()
 model = "/home/pi/yogi/software/rpi/yogi.pmdl"
 
