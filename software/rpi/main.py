@@ -194,7 +194,7 @@ class SubscriptionThread(Thread):
         sub_name = 'projects/fiery-celerity-194216/subscriptions/PythonYogiSub'
         self.subscription = subscriber.subscribe(sub_name)
 
-    def process_messages(message):
+    def process_messages(self, message):
       json_string = str(message.data)[3:-2]
       json_string = json_string.replace('\\\\', '')
       # create dict from json string
