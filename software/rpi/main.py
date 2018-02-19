@@ -101,7 +101,7 @@ def check_time(assistant_thread):
         time.sleep(30)
 
 
-class AssistantThread(object):
+class AssistantThread(Thread):
     """An assistant that runs in the background.
 
     The Google Assistant Library event loop blocks the running thread entirely.
@@ -111,7 +111,7 @@ class AssistantThread(object):
     """
 
     def __init__(self, msg_queue):
-        self._task = Thread(target=self._run_task)
+        Thread.__init__(target=self._run_task)
         self._can_start_conversation = False
         self._assistant = None
         self._snowboy = None
@@ -191,9 +191,7 @@ class AssistantThread(object):
 class SubscriptionThread(Thread):
 
     def __init__(self, msg_queue):
-
         Thread.__init__(self)
-
         self.shutdown_flag = Event()
         self.msg_queue = msg_queue
 
