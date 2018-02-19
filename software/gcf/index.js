@@ -3,10 +3,12 @@
 const functions = require('firebase-functions'); // Cloud Functions for Firebase library
 const DialogflowApp = require('actions-on-google').DialogflowApp; // Google Assistant helper library
 const http = require('http');
+const PubSub = require('@google-cloud/pubsub');
 const host = 'api.worldweatheronline.com';
 const wwoApiKey = '6468907fa0c44d05aa6160331180902';
-const pubsubClient = pubsub({ projectId: 'fiery-celerity-194216' });
-const topicName = 'YogiMessages';
+const pubsubClient = new PubSub({ projectId: 'fiery-celerity-194216' });
+const topic = pubsubClient.topic('YogiMessages');
+const publisher = topic.publisher();
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -62,18 +64,12 @@ function processV1Request (request, response) {
         }
     },
     'resp_yes': () => {
-        createTopic(function(topic) {
-          var pubData = { 'command': 'face', 'value': 'happy' };
-          publishMessage(topic, JSON.stringify(pubData), sendGoogleResponse('Yay!')
-        );
-      });
+        var pubData = { 'command': 'face', 'value': 'happy' };
+        publishMessage(JSON.stringify(pubData), sendGoogleResponse('Yay!'));
     },
     'resp_no': () => {
-        createTopic(function(topic) {
-          var pubData = { 'command': 'face', 'value': 'sad' };
-          publishMessage(topic, JSON.stringify(pubData), sendGoogleResponse('Yay!')
-        );
-      });
+        var pubData = { 'command': 'face', 'value': 'sad' };
+        publishMessage(JSON.stringify(pubData), sendGoogleResponse('Okay...'));
     },
     'weather': () => {
         let hasWeatherContext = false;
@@ -126,7 +122,7 @@ function processV1Request (request, response) {
             userCondition = request.body.result.parameters.condition;
         } else {
             userCondition = inputContexts[weatherContextIndex].parameters.condition;
-        };
+        }
         let city = '';
         if (request.body.result.parameters.location){
             city = request.body.result.parameters.location.city || request.body.result.parameters.location.country;
@@ -187,10 +183,8 @@ function processV1Request (request, response) {
   function sendGoogleResponse (responseToUser) {
     if (typeof responseToUser === 'string') {
       app.ask(responseToUser); // Google Assistant response
-      createTopic(function(topic) {
-        var pubData = { 'command': 'face', 'value': 'speaking' };
-        publishMessage(topic, JSON.stringify(pubData), null);
-      });
+      var pubData = { 'command': 'face', 'value': 'speaking' };
+      publishMessage(JSON.stringify(pubData), null);
     } else {
       // If speech or displayText is defined use it to respond
       let googleResponse = app.buildRichResponse().addSimpleResponse({
@@ -231,126 +225,128 @@ function processV1Request (request, response) {
       response.json(responseJson); // Send response to Dialogflow
     }
   }
-}
-
-function callWeatherApi (city, date) {
-  return new Promise((resolve, reject) => {
-    // Create the path for the HTTP request to get the weather
-    let path = '/premium/v1/weather.ashx?format=json&num_of_days=1' +
-      '&q=' + city + '&key=' + wwoApiKey + '&date=' + date + '&includelocation=yes';
-    console.log('API Request: ' + host + path);
-    // Make the HTTP request to get the weather
-    http.get({host: host, path: path}, (res) => {
-      let body = ''; // var to store the response chunks
-      res.on('data', (d) => { body += d; }); // store each response chunk
-      res.on('end', () => {
-        // After all the data has been received parse the JSON for desired data
-        let response = JSON.parse(body);
-        let forecast = response['data']['weather'][0];
-        let location = response['data']['nearest_area'][0]['region'][0];
-        let conditions = response['data']['current_condition'][0];
-        let currentConditions = conditions['weatherDesc'][0]['value'].toLowerCase();
-        let now = new Date();
-        let requested = new Date(forecast['date'].split("-"));
-        let intro = (requested > now) ? "Forecasted conditions" : "Current conditions";
-        // Create response
-        let output = `${intro} in ${location['value']} are ${currentConditions} with a projected high of ${forecast['maxtempC']}°C and a low of ${forecast['mintempC']}°C.`;
-        // Resolve the promise with the output text
-        console.log(output);
-        resolve(output);
-      });
-      res.on('error', (error) => {
-        reject(error);
-      });
-    });
-  });
-}
-function callWeatherApiCondition (userCondition, city, date) {
-  return new Promise((resolve, reject) => {
-    // Create the path for the HTTP request to get the weather
-    let path = '/premium/v1/weather.ashx?format=json&num_of_days=1' +
-      '&q=' + city + '&key=' + wwoApiKey + '&date=' + date + '&includelocation=yes';
-    console.log('API Request: ' + host + path);
-    // Make the HTTP request to get the weather
-    http.get({host: host, path: path}, (res) => {
-      let body = ''; // var to store the response chunks
-      res.on('data', (d) => { body += d; }); // store each response chunk
-      res.on('end', () => {
-        // After all the data has been received parse the JSON for desired data
-        let response = JSON.parse(body);
-        let forecast = response['data']['weather'][0];
-        let location = response['data']['nearest_area'][0]['region'][0];
-        let conditions = response['data']['current_condition'][0];
-        let currentConditions = conditions['weatherDesc'][0]['value'].toLowerCase();
-        let now = new Date();
-        let requested = new Date(forecast['date'].split("-"));
-        let intro = (currentConditions.search(userCondition) > -1) ? "Yes" : "No";
-        let grammar = (requested > now) ? "will be" : "is";
-        // Create response
-        let output = `${intro}, it ${grammar} ${currentConditions} in ${location['value']}.`;
-        // Resolve the promise with the output text
-        console.log(output);
-        resolve(output);
-      });
-      res.on('error', (error) => {
-        reject(error);
+  function callWeatherApi (city, date) {
+    return new Promise((resolve, reject) => {
+      // Create the path for the HTTP request to get the weather
+      let path = '/premium/v1/weather.ashx?format=json&num_of_days=1' +
+        '&q=' + city + '&key=' + wwoApiKey + '&date=' + date + '&includelocation=yes';
+      console.log('API Request: ' + host + path);
+      // Make the HTTP request to get the weather
+      http.get({host: host, path: path}, (res) => {
+        let body = ''; // var to store the response chunks
+        res.on('data', (d) => { body += d; }); // store each response chunk
+        res.on('end', () => {
+          // After all the data has been received parse the JSON for desired data
+          let response = JSON.parse(body);
+          let forecast = response['data']['weather'][0];
+          let location = response['data']['nearest_area'][0]['region'][0];
+          let conditions = response['data']['current_condition'][0];
+          let currentConditions = conditions['weatherDesc'][0]['value'].toLowerCase();
+          let now = new Date();
+          let requested = new Date(forecast['date'].split("-"));
+          let intro = (requested > now) ? "Forecasted conditions" : "Current conditions";
+          // Create response
+          let output = `${intro} in ${location['value']} are ${currentConditions} with a projected high of ${forecast['maxtempC']}°C and a low of ${forecast['mintempC']}°C.`;
+          // Resolve the promise with the output text
+          console.log(output);
+          resolve(output);
+        });
+        res.on('error', (error) => {
+          reject(error);
+        });
       });
     });
-  });
-}
-
-function createTopic(callback) {
-  if (!callback) {
-    console.log('no callback');
-    return;
   }
-  pubsubClient.createTopic(topicName, function(error, topic) {
-    // topic already exists
-    if (error && error.code === 409) {
-      console.log('topic created');
-      // callback(topic);
-      callback(pubsubClient.topic(topicName));
-      return;
-    }
-    if (error) {
-      console.log(error);
-      return;
-    }
-    callback(pubsubClient.topic(topicName));
-  });
+  function callWeatherApiCondition (userCondition, city, date) {
+    return new Promise((resolve, reject) => {
+      // Create the path for the HTTP request to get the weather
+      let path = '/premium/v1/weather.ashx?format=json&num_of_days=1' +
+        '&q=' + city + '&key=' + wwoApiKey + '&date=' + date + '&includelocation=yes';
+      console.log('API Request: ' + host + path);
+      // Make the HTTP request to get the weather
+      http.get({host: host, path: path}, (res) => {
+        let body = ''; // var to store the response chunks
+        res.on('data', (d) => { body += d; }); // store each response chunk
+        res.on('end', () => {
+          // After all the data has been received parse the JSON for desired data
+          let response = JSON.parse(body);
+          let forecast = response['data']['weather'][0];
+          let location = response['data']['nearest_area'][0]['region'][0];
+          let conditions = response['data']['current_condition'][0];
+          let currentConditions = conditions['weatherDesc'][0]['value'].toLowerCase();
+          let now = new Date();
+          let requested = new Date(forecast['date'].split("-"));
+          let intro = (currentConditions.search(userCondition) > -1) ? "Yes" : "No";
+          let grammar = (requested > now) ? "will be" : "is";
+          // Create response
+          let output = `${intro}, it ${grammar} ${currentConditions} in ${location['value']}.`;
+          // Resolve the promise with the output text
+          console.log(output);
+          resolve(output);
+        });
+        res.on('error', (error) => {
+          reject(error);
+        });
+      });
+    });
+  }
+
+  // function createTopic(callback) {
+  //   if (!callback) {
+  //     console.log('no callback');
+  //     return;
+  //   }
+  //   pubsubClient.createTopic(topicName, function(error, topic) {
+  //     // topic already exists
+  //     if (error && error.code === 409) {
+  //       console.log('topic created');
+  //       // callback(topic);
+  //       callback(pubsubClient.topic(topicName));
+  //       return;
+  //     }
+  //     if (error) {
+  //       console.log(error);
+  //       return;
+  //     }
+  //     callback(pubsubClient.topic(topicName));
+  //   });
+  // }
+
+  function publishMessage(message, callback) {
+    const data = Buffer.from(message);
+    publisher.publish(data, function(error) {
+      if (error) {
+        console.log('Publish error:');
+        console.log(error);
+        return;
+      }
+      console.log('Publish successful');
+      if (callback) {
+        callback();
+      }
+    });
+  }
 }
 
-function publishMessage(topic, message, callback) {
-  topic.publish(message, function(error) {
-    if (error) {
-      console.log('Publish error:');
-      console.log(error);
-      return;
-    }
-    console.log('publish successful');
-    if (callback) {
-      callback();
-    }
-  });
-}
-// Construct rich response for Google Assistant (v1 requests only)
-const app = new DialogflowApp();
-const googleRichResponse = app.buildRichResponse()
-  .addSimpleResponse('This is the first simple response for Google Assistant')
-  .addSuggestions(
-    ['Suggestion Chip', 'Another Suggestion Chip'])
-    // Create a basic card and add it to the rich response
-  .addBasicCard(app.buildBasicCard(`This is a basic card.  Text in a
- basic card can include "quotes" and most other unicode characters
- including emoji 📱.  Basic cards also support some markdown
- formatting like *emphasis* or _italics_, **strong** or __bold__,
- and ***bold itallic*** or ___strong emphasis___ as well as other things
- like line  \nbreaks`) // Note the two spaces before '\n' required for a
-                        // line break to be rendered in the card
-    .setSubtitle('This is a subtitle')
-    .setTitle('Title: this is a title')
-    .addButton('This is a button', 'https://assistant.google.com/')
-    .setImage('https://developers.google.com/actions/images/badges/XPM_BADGING_GoogleAssistant_VER.png',
-      'Image alternate text'))
-  .addSimpleResponse({ speech: 'This is another simple response',
-    displayText: 'This is the another simple response 💁' });
+
+// // Construct rich response for Google Assistant (v1 requests only)
+// const app = new DialogflowApp();
+// const googleRichResponse = app.buildRichResponse()
+//   .addSimpleResponse('This is the first simple response for Google Assistant')
+//   .addSuggestions(
+//     ['Suggestion Chip', 'Another Suggestion Chip'])
+//     // Create a basic card and add it to the rich response
+//   .addBasicCard(app.buildBasicCard(`This is a basic card.  Text in a
+//  basic card can include "quotes" and most other unicode characters
+//  including emoji 📱.  Basic cards also support some markdown
+//  formatting like *emphasis* or _italics_, **strong** or __bold__,
+//  and ***bold itallic*** or ___strong emphasis___ as well as other things
+//  like line  \nbreaks`) // Note the two spaces before '\n' required for a
+//                         // line break to be rendered in the card
+//     .setSubtitle('This is a subtitle')
+//     .setTitle('Title: this is a title')
+//     .addButton('This is a button', 'https://assistant.google.com/')
+//     .setImage('https://developers.google.com/actions/images/badges/XPM_BADGING_GoogleAssistant_VER.png',
+//       'Image alternate text'))
+//   .addSimpleResponse({ speech: 'This is another simple response',
+//     displayText: 'This is the another simple response 💁' });
