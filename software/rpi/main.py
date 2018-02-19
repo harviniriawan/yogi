@@ -196,7 +196,7 @@ class SubscriptionThread(Thread):
         self.msg_queue = msg_queue
 
         # Create a new pull subscription on the given topic
-        pubsub_client = pubsub.Client(project='fiery-celerity-194216', credentials=creds)
+        pubsub_client = pubsub.SubscriberClient(project='fiery-celerity-194216', credentials=creds)
         topic_name = 'YogiMessages'
         topic = pubsub_client.topic(topic_name)
 
