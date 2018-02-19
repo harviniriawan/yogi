@@ -50,7 +50,7 @@ logging.basicConfig(
 )
 
 
-var creds
+creds = aiy.assistant.auth_helpers.get_assistant_credentials()
 model = "/home/pi/yogi/software/rpi/yogi.pmdl"
 
 face_command_map = {
@@ -128,8 +128,6 @@ class AssistantThread(object):
         self._task.start()
 
     def _run_task(self):
-        global creds
-        creds = aiy.assistant.auth_helpers.get_assistant_credentials()
         with Assistant(creds, "Meep") as assistant:
             self._assistant = assistant
             while not self.shutdown_flag.is_set():
