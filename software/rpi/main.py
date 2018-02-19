@@ -133,7 +133,7 @@ class AssistantThread(Thread):
             status_ui.status('ready')
             self._can_start_conversation = True
             # Start the voicehat button trigger.
-            aiy.voicehat.get_button().on_press(self._on_button_pressed)
+            aiy.voicehat.get_button().on_press(self._on_detect)
             # self._snowboy = snowboythreaded.ThreadedDetector(self._on_detect, model, sensitivity=0.5)
             # self._snowboy.start()
             # self._snowboy.start_recog(sleep_time=0.03)
