@@ -30,6 +30,7 @@ import json
 import subprocess
 import serial
 from threading import Thread, Event
+import threading
 import snowboythreaded
 import signal
 import datetime
@@ -48,6 +49,8 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
 )
 
+
+var creds
 model = "/home/pi/yogi/software/rpi/yogi.pmdl"
 
 face_command_map = {
