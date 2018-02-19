@@ -101,7 +101,7 @@ def check_time(assistant_thread):
         time.sleep(30)
 
 
-class AssistantThread(object):
+class AssistantThread(Thread):
     """An assistant that runs in the background.
 
     The Google Assistant Library event loop blocks the running thread entirely.
@@ -111,7 +111,7 @@ class AssistantThread(object):
     """
 
     def __init__(self, msg_queue):
-        self._task = Thread(target=self._run_task)
+        Thread.__init__(self)
         self._can_start_conversation = False
         self._assistant = None
         self._snowboy = None
@@ -120,14 +120,7 @@ class AssistantThread(object):
         self.shutdown_flag = Event()
         self.medicine_flag = Event()
 
-    def start(self):
-        """Starts the assistant.
-
-        Starts the assistant event loop and begin processing events.
-        """
-        self._task.start()
-
-    def _run_task(self):
+    def run(self):
         with Assistant(creds, "Meep") as assistant:
             self._assistant = assistant
             while not self.shutdown_flag.is_set():
@@ -218,6 +211,7 @@ class SubscriptionThread(Thread):
 
     def run(self):
         """ Poll for new messages from the pull subscription """
+        print("sub running")
         self.subscription.open(self.process_messages)
         time.sleep(0.25)
 
@@ -233,6 +227,7 @@ class SerialThread(Thread):
 
     def run(self):
         while not self.shutdown_flag.is_set():
+            print("Serial running")
             if not self.msg_queue.empty():
                 cmd = self.msg_queue.get()
                 self.serial.write(str.encode(cmd))
